@@ -33,6 +33,13 @@ export const apiStructure = {
 		getUnusedMysteryPotGameLobby: {
 			requestType: 'GET',
 			validation: z.object({}) satisfies z.AnyZodObject
+		},
+		addMessage: {
+			requestType: 'POST',
+			validation: z.object({
+				lobbyId: z.string().length(36, 'Lobby Id is required'),
+				message: z.string().min(1, 'Message is required').max(1000, 'Message is too long')
+			}) satisfies z.AnyZodObject
 		}
 	},
 	authRouter: {

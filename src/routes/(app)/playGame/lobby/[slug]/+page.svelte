@@ -1,24 +1,35 @@
 <script lang="ts">
 	import { browser } from '$app/environment';
-	import { sessionHybridUserStore } from '$lib/stores/userStore';
 	import { writable } from 'svelte/store';
 	import type { PageData } from './$types';
 	import { onMount } from 'svelte';
+	import { sessionHybridUserStore } from '$lib/stores/userStore';
+	import { apiSend } from '$lib/client/apiClient';
 
 	export let data: PageData;
 
-	type message = {
+	enum PayloadType {
+		CHATMESSAGE
+	}
+
+	type Payload = {
+		payloadType: PayloadType;
+		content: string;
+	};
+
+	type Message = {
+		payloadType: PayloadType;
+		content: string;
 		author: string;
 		timeStamp: string;
-		content: string;
 	};
 	// Create a new store with the given data.
 	export const createMessageStore = (ws: WebSocket) => {
-		const store = writable<message[]>([]);
+		const store = writable<Message[]>([]);
 		return {
 			subscribe: store.subscribe,
 			update: store.update,
-			addMessages: (messages: message[]) => {
+			addMessages: (messages: Message[]) => {
 				ws.send(JSON.stringify(messages));
 				store.update((oldMessages) => [...oldMessages, ...messages]);
 			},
@@ -32,10 +43,13 @@
 			let ws = new WebSocket('ws://localhost:8080' + route);
 			let messageStore = createMessageStore(ws);
 			ws.onmessage = (event) => {
-				console.log(event.data);
-				const incomingMessages = JSON.parse(event.data) as message[];
-				for (const incomingMessage of incomingMessages) {
-					messageStore.update((messages) => [...messages, incomingMessage]);
+				const incomingPayloads = JSON.parse(event.data) as Payload[];
+				for (const incomingPayload of incomingPayloads) {
+					switch (incomingPayload.payloadType) {
+						case PayloadType.CHATMESSAGE:
+							messageStore.update((messages) => [...messages, incomingPayload as Message]);
+							break;
+					}
 				}
 			};
 			return messageStore;
@@ -49,14 +63,14 @@
 		messageStore = await initWebSocket();
 	});
 
-	const postMessage = (message: string) => {
-		messageStore?.addMessages([
+	const postMessage = async (message: string) => {
+		await apiSend(fetch).mysteryPotGameRouter.addMessage.POST(
 			{
-				author: 'test',
-				content: message,
-				timeStamp: new Date().toISOString()
-			}
-		]);
+				lobbyId: data.data.lobbyInfo.roomId!,
+				message: message
+			},
+			false
+		);
 	};
 </script>
 
