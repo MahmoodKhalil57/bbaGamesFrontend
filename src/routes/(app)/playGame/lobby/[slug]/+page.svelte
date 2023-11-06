@@ -24,43 +24,42 @@
 		timeStamp: string;
 	};
 	// Create a new store with the given data.
-	export const createMessageStore = (ws: WebSocket) => {
+	export const createMessageStore = () => {
 		const store = writable<Message[]>([]);
 		return {
 			subscribe: store.subscribe,
-			update: store.update,
-			addMessages: (messages: Message[]) => {
-				ws.send(JSON.stringify(messages));
-				store.update((oldMessages) => [...oldMessages, ...messages]);
-			},
-			readyState: ws.readyState
+			update: store.update
+			// addMessages: (messages: Message[]) => {
+			// 	ws.send(JSON.stringify(messages));
+			// 	store.update((oldMessages) => [...oldMessages, ...messages]);
+			// },
+			// readyState: ws.readyState
 		};
 	};
 
 	const initWebSocket = async () => {
 		if (browser) {
-			const route = `/lobby/${data.data.lobbyInfo.roomId}`;
-			let ws = new WebSocket('ws://46.101.9.66:8080' + route);
-			let messageStore = createMessageStore(ws);
-			ws.onmessage = (event) => {
-				const incomingPayloads = JSON.parse(event.data) as Payload[];
-				for (const incomingPayload of incomingPayloads) {
-					switch (incomingPayload.payloadType) {
-						case PayloadType.CHATMESSAGE:
-							messageStore.update((messages) => [...messages, incomingPayload as Message]);
-							break;
-					}
-				}
-			};
-			return messageStore;
+			messageStore = createMessageStore();
+
+			// const route = `/lobby/${data.data.lobbyInfo.roomId}`;
+			// let ws = new WebSocket('ws://46.101.9.66:8080' + route);
+			// ws.onmessage = (event) => {
+			// 	const incomingPayloads = JSON.parse(event.data) as Payload[];
+			// 	for (const incomingPayload of incomingPayloads) {
+			// 		switch (incomingPayload.payloadType) {
+			// 			case PayloadType.CHATMESSAGE:
+			// 				messageStore?.update((messages) => [...messages, incomingPayload as Message]);
+			// 				break;
+			// 		}
+			// 	}
+			// };
 		}
-		return undefined;
 	};
 
 	let messageStore: ReturnType<typeof createMessageStore> | undefined = undefined;
 
 	onMount(async () => {
-		messageStore = await initWebSocket();
+		await initWebSocket();
 	});
 
 	const postMessage = async (message: string) => {
